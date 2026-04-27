@@ -106,6 +106,7 @@ This repo includes a scheduled workflow at:
 It supports:
 - daily scheduled run
 - manual `workflow_dispatch`
+- Telegram failure notification when configured
 
 ### Required GitHub secret
 
@@ -114,6 +115,29 @@ Add this repository secret:
 - `AUTO_CHECKIN_ACCOUNTS`
 
 Its value should be the same JSON array shown above.
+
+### Optional Telegram secrets
+
+To enable failure notifications, add these repository secrets:
+
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_CHAT_ID`
+
+You can get them like this:
+
+1. Create a bot with `@BotFather` and copy the bot token
+2. Add the bot to your target chat or group
+3. Get the chat id
+   - for a private chat, send the bot a message first
+   - then open:
+     `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`
+   - find the numeric `chat.id`
+
+When a workflow run fails, GitHub Actions will send a message containing:
+- repository
+- branch
+- run number
+- direct link to the failed run
 
 ## Notes
 
