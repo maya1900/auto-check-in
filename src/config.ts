@@ -31,23 +31,88 @@ const accountSchema = z
 
 const accountsSchema = z.array(accountSchema).min(1)
 
+function readEnv(name: string): string | undefined {
+  const value = process.env[name]
+  if (typeof value !== "string") {
+    return undefined
+  }
+
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : undefined
+}
+
+function readAccountNamesFromEnv(): string[] {
+  const raw = readEnv("AUTO_CHECKIN_ACCOUNT_NAMES")
+
+  if (!raw) {
+    throw new Error("AUTO_CHECKIN_ACCOUNT_NAMES is required")
+  }
+
+  const names = raw
+    .split(",")
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0)
+
+  if (names.length === 0) {
+    throw new Error("AUTO_CHECKIN_ACCOUNT_NAMES must contain at least one account name")
+  }
+
+  return names
+}
+
+function parseUserId(value: string | undefined, accountKey: string): number | undefined {
+  if (!value) {
+    return undefined
+  }
+
+  const parsed = Number(value)
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`Account ${accountKey} has invalid AUTO_CHECKIN_${accountKey.toUpperCase()}_USER_ID`)
+  }
+
+  return parsed
+}
+
+function parseEnabled(value: string | undefined, accountKey: string): boolean | undefined {
+  if (!value) {
+    return undefined
+  }
+
+  if (value === "true") {
+    return true
+  }
+
+  if (value === "false") {
+    return false
+  }
+
+  throw new Error(`Account ${accountKey} has invalid AUTO_CHECKIN_${accountKey.toUpperCase()}_ENABLED`)
+}
+
+function readAccountFromPrefixedEnv(accountKey: string): Omit<AccountConfig, "enabled"> & {
+  enabled?: boolean
+} {
+  const prefix = `AUTO_CHECKIN_${accountKey.toUpperCase()}_`
+  const name = readEnv(`${prefix}NAME`) ?? accountKey
+
+  return {
+    name,
+    siteType: readEnv(`${prefix}SITE_TYPE`) as AccountConfig["siteType"],
+    baseUrl: readEnv(`${prefix}BASE_URL`) ?? "",
+    authType: readEnv(`${prefix}AUTH_TYPE`) as AccountConfig["authType"],
+    userId: parseUserId(readEnv(`${prefix}USER_ID`), accountKey),
+    accessToken: readEnv(`${prefix}ACCESS_TOKEN`),
+    cookie: readEnv(`${prefix}COOKIE`),
+    enabled: parseEnabled(readEnv(`${prefix}ENABLED`), accountKey),
+  }
+}
+
 export function loadAccountsFromEnv(): AccountConfig[] {
-  const raw = process.env.AUTO_CHECKIN_ACCOUNTS
+  const parsedAccounts = readAccountNamesFromEnv().map((accountKey) =>
+    readAccountFromPrefixedEnv(accountKey),
+  )
 
-  if (!raw || raw.trim().length === 0) {
-    throw new Error("AUTO_CHECKIN_ACCOUNTS is required")
-  }
-
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw)
-  } catch (error) {
-    throw new Error(
-      `AUTO_CHECKIN_ACCOUNTS must be valid JSON: ${error instanceof Error ? error.message : String(error)}`,
-    )
-  }
-
-  const result = accountsSchema.safeParse(parsed)
+  const result = accountsSchema.safeParse(parsedAccounts)
   if (!result.success) {
     throw new Error(result.error.issues.map((issue) => issue.message).join("; "))
   }
