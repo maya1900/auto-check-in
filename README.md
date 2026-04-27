@@ -124,7 +124,42 @@ CLI 会输出：
 当前支持：
 - 每日定时运行
 - 手动 `workflow_dispatch`
-- 失败时可选发送 Telegram 通知
+- 成功或失败后都可选发送 Telegram 最终统计通知
+
+### 默认定时
+
+默认 cron 为：
+
+```yaml
+17 1 * * *
+```
+
+工作流里同时设置了：
+
+- `TZ: Asia/Shanghai`
+
+也就是说，默认会按上海时区每日执行一次。
+
+### 自定义定时
+
+如果你想改成自己的执行时间，直接修改：
+
+- `.github/workflows/daily-checkin.yml`
+
+把这一段里的 cron 改掉即可：
+
+```yaml
+on:
+  schedule:
+    - cron: "17 1 * * *"
+  workflow_dispatch:
+```
+
+例如：
+- `0 0 * * *`：每天 08:00（Asia/Shanghai）
+- `30 1 * * *`：每天 09:30（Asia/Shanghai）
+
+GitHub Actions 的 `schedule` 不能从 secret 动态读取，所以这里最简单可靠的方式就是直接改 workflow 文件。
 
 ### 必需的 GitHub Secrets
 
@@ -175,7 +210,7 @@ CLI 会输出：
 
 ### 可选的 Telegram Secrets
 
-如果要在失败时收到 Telegram 通知，请额外添加：
+如果要收到 Telegram 通知，请额外添加：
 
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_CHAT_ID`
@@ -190,11 +225,13 @@ CLI 会输出：
      `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`
    - 在返回结果里找到数字形式的 `chat.id`
 
-当工作流执行失败时，GitHub Actions 发送的消息会包含：
+当工作流执行结束后，只要配置了 Telegram secrets，就会发送一条最终通知。消息会包含：
+- 成功 / 失败状态
 - 仓库名
 - 分支名
 - run 编号
-- 失败运行的直达链接
+- 该次运行的直达链接
+- 本次签到的最终统计与账号结果摘要
 
 ## 说明
 

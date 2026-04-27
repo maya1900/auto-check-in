@@ -12,6 +12,8 @@ jobs:
       TZ: Asia/Shanghai
       AUTO_CHECKIN_CONFIG_ACC1: ${{ secrets.AUTO_CHECKIN_CONFIG_ACC1 }}
       AUTO_CHECKIN_CONFIG_ACC2: ${{ secrets.AUTO_CHECKIN_CONFIG_ACC2 }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,19 +39,43 @@ jobs:
         run: pnpm build
 
       - name: Run auto check-in
-        run: pnpm checkin
+        run: |
+          set -o pipefail
+          pnpm checkin 2>&1 | tee checkin.log
 
-      - name: Notify Telegram on failure
-        if: failure() && env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
+      - name: Notify Telegram summary
+        if: always() && env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           REPO: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
           RUN_NUMBER: ${{ github.run_number }}
           REF_NAME: ${{ github.ref_name }}
+          JOB_STATUS: ${{ job.status }}
         run: |
-          message="❌ auto-check-in failed%0ARepo: ${REPO}%0ABranch: ${REF_NAME}%0ARun: #${RUN_NUMBER}%0Ahttps://github.com/${REPO}/actions/runs/${RUN_ID}"
+          status_icon="✅"
+          status_text="success"
+          if [ "${JOB_STATUS}" != "success" ]; then
+            status_icon="❌"
+            status_text="failed"
+          fi
+
+          if [ -f checkin.log ]; then
+            summary="$(python - <<'PY'
+            from pathlib import Path
+            text = Path('checkin.log').read_text(encoding='utf-8', errors='replace').splitlines()
+            selected = []
+            for line in text:
+                if line.startswith('Processed ') or line.startswith('success=') or line.startswith('['):
+                    selected.append(line)
+            summary = '\n'.join(selected[-20:]) if selected else 'No check-in summary captured.'
+            print(summary)
+            PY
+            )"
+          else
+            summary="No check-in log found."
+          fi
+
+          message="${status_icon} auto-check-in ${status_text}%0ARepo: ${REPO}%0ABranch: ${REF_NAME}%0ARun: #${RUN_NUMBER}%0Ahttps://github.com/${REPO}/actions/runs/${RUN_ID}%0A%0A${summary}"
           curl -sS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -d "chat_id=${TELEGRAM_CHAT_ID}" \
-            -d "text=${message}"
+            --data-urlencode "text=${message}"
