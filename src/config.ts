@@ -30,86 +30,46 @@ const accountSchema = z
   })
 
 const accountsSchema = z.array(accountSchema).min(1)
+const CONFIG_PREFIX = "AUTO_CHECKIN_CONFIG_"
 
-function readEnv(name: string): string | undefined {
-  const value = process.env[name]
-  if (typeof value !== "string") {
-    return undefined
+function readAccountConfigEntriesFromEnv(): Array<[string, string]> {
+  const entries: Array<[string, string]> = []
+
+  for (const [name, value] of Object.entries(process.env)) {
+    if (!name.startsWith(CONFIG_PREFIX) || typeof value !== "string") {
+      continue
+    }
+
+    const trimmed = value.trim()
+    if (trimmed.length === 0) {
+      continue
+    }
+
+    entries.push([name, trimmed])
   }
 
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : undefined
+  entries.sort(([left], [right]) => left.localeCompare(right))
+
+  if (entries.length === 0) {
+    throw new Error(`At least one ${CONFIG_PREFIX}* environment variable is required`)
+  }
+
+  return entries
 }
 
-function readAccountNamesFromEnv(): string[] {
-  const raw = readEnv("AUTO_CHECKIN_ACCOUNT_NAMES")
-
-  if (!raw) {
-    throw new Error("AUTO_CHECKIN_ACCOUNT_NAMES is required")
-  }
-
-  const names = raw
-    .split(",")
-    .map((name) => name.trim())
-    .filter((name) => name.length > 0)
-
-  if (names.length === 0) {
-    throw new Error("AUTO_CHECKIN_ACCOUNT_NAMES must contain at least one account name")
-  }
-
-  return names
-}
-
-function parseUserId(value: string | undefined, accountKey: string): number | undefined {
-  if (!value) {
-    return undefined
-  }
-
-  const parsed = Number(value)
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new Error(`Account ${accountKey} has invalid AUTO_CHECKIN_${accountKey.toUpperCase()}_USER_ID`)
-  }
-
-  return parsed
-}
-
-function parseEnabled(value: string | undefined, accountKey: string): boolean | undefined {
-  if (!value) {
-    return undefined
-  }
-
-  if (value === "true") {
-    return true
-  }
-
-  if (value === "false") {
-    return false
-  }
-
-  throw new Error(`Account ${accountKey} has invalid AUTO_CHECKIN_${accountKey.toUpperCase()}_ENABLED`)
-}
-
-function readAccountFromPrefixedEnv(accountKey: string): Omit<AccountConfig, "enabled"> & {
-  enabled?: boolean
-} {
-  const prefix = `AUTO_CHECKIN_${accountKey.toUpperCase()}_`
-  const name = readEnv(`${prefix}NAME`) ?? accountKey
-
-  return {
-    name,
-    siteType: readEnv(`${prefix}SITE_TYPE`) as AccountConfig["siteType"],
-    baseUrl: readEnv(`${prefix}BASE_URL`) ?? "",
-    authType: readEnv(`${prefix}AUTH_TYPE`) as AccountConfig["authType"],
-    userId: parseUserId(readEnv(`${prefix}USER_ID`), accountKey),
-    accessToken: readEnv(`${prefix}ACCESS_TOKEN`),
-    cookie: readEnv(`${prefix}COOKIE`),
-    enabled: parseEnabled(readEnv(`${prefix}ENABLED`), accountKey),
+function parseAccountConfigValue(envName: string, raw: string): unknown {
+  try {
+    return JSON.parse(raw)
+  } catch (error) {
+    throw new Error(
+      `${envName} must be valid JSON: ${error instanceof Error ? error.message : String(error)}`,
+    )
   }
 }
 
 export function loadAccountsFromEnv(): AccountConfig[] {
-  const parsedAccounts = readAccountNamesFromEnv().map((accountKey) =>
-    readAccountFromPrefixedEnv(accountKey),
+  const parsedAccounts = readAccountConfigEntriesFromEnv().map(([envName, raw]) =>
+    parseAccountConfigValue(envName, raw),
   )
 
   const result = accountsSchema.safeParse(parsedAccounts)

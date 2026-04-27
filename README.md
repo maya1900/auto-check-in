@@ -32,44 +32,51 @@ pnpm install
 
 ## 配置方式
 
-先设置 `AUTO_CHECKIN_ACCOUNT_NAMES`，它是一个逗号分隔的账号 key 列表；然后为每个账号 key 配置一组对应的环境变量。
+程序会自动扫描所有以 `AUTO_CHECKIN_CONFIG_` 开头的环境变量。每个变量的值都必须是一个完整的账号配置 JSON。
+
+这意味着：
+- 新增一个账号，只需要新增一个环境变量或 GitHub Secret
+- 删除一个账号，只需要删掉对应的环境变量或 Secret
+- 不需要再维护单独的账号列表变量
 
 示例：
 
 ```bash
-export AUTO_CHECKIN_ACCOUNT_NAMES=acc1,acc2
+export AUTO_CHECKIN_CONFIG_ACC1='{"name":"main-account","siteType":"new-api","baseUrl":"https://example.com","authType":"token","userId":123,"accessToken":"your-token","enabled":true}'
 
-export AUTO_CHECKIN_ACC1_NAME=main-account
-export AUTO_CHECKIN_ACC1_SITE_TYPE=new-api
-export AUTO_CHECKIN_ACC1_BASE_URL=https://example.com
-export AUTO_CHECKIN_ACC1_AUTH_TYPE=token
-export AUTO_CHECKIN_ACC1_USER_ID=123
-export AUTO_CHECKIN_ACC1_ACCESS_TOKEN=your-token
-export AUTO_CHECKIN_ACC1_ENABLED=true
-
-export AUTO_CHECKIN_ACC2_NAME=backup-account
-export AUTO_CHECKIN_ACC2_SITE_TYPE=new-api
-export AUTO_CHECKIN_ACC2_BASE_URL=https://example2.com
-export AUTO_CHECKIN_ACC2_AUTH_TYPE=cookie
-export AUTO_CHECKIN_ACC2_COOKIE='session=your-cookie'
+export AUTO_CHECKIN_CONFIG_ACC2='{"name":"backup-account","siteType":"new-api","baseUrl":"https://example2.com","authType":"cookie","cookie":"session=your-cookie","enabled":true}'
 ```
 
-### 账号环境变量说明
+### 单个账号配置字段说明
 
-如果账号 key 是 `acc1`，则可使用下面这些变量：
+每个 `AUTO_CHECKIN_CONFIG_*` 的 JSON 支持这些字段：
 
-- `AUTO_CHECKIN_ACC1_NAME`：可选，日志中展示的账号名，默认回退为 `acc1`
-- `AUTO_CHECKIN_ACC1_SITE_TYPE`：必须为 `new-api`
-- `AUTO_CHECKIN_ACC1_BASE_URL`：站点根地址
-- `AUTO_CHECKIN_ACC1_AUTH_TYPE`：`token` 或 `cookie`
-- `AUTO_CHECKIN_ACC1_USER_ID`：可选；某些站点需要兼容用户 ID 请求头时可配置
-- `AUTO_CHECKIN_ACC1_ACCESS_TOKEN`：当 `AUTH_TYPE=token` 时必填
-- `AUTO_CHECKIN_ACC1_COOKIE`：当 `AUTH_TYPE=cookie` 时必填
-- `AUTO_CHECKIN_ACC1_ENABLED`：可选；只能填 `true` 或 `false`，默认是 `true`
+- `name`：日志中展示的账号名
+- `siteType`：必须为 `new-api`
+- `baseUrl`：站点根地址
+- `authType`：`token` 或 `cookie`
+- `userId`：可选；某些站点需要兼容用户 ID 请求头时可配置
+- `accessToken`：当 `authType=token` 时必填
+- `cookie`：当 `authType=cookie` 时必填
+- `enabled`：可选，默认是 `true`
+
+示例 JSON：
+
+```json
+{
+  "name": "main-account",
+  "siteType": "new-api",
+  "baseUrl": "https://example.com",
+  "authType": "token",
+  "userId": 123,
+  "accessToken": "your-token",
+  "enabled": true
+}
+```
 
 后续如果想继续加账号：
-1. 把新账号 key 追加到 `AUTO_CHECKIN_ACCOUNT_NAMES`
-2. 新增对应的 `AUTO_CHECKIN_<KEY>_*` 环境变量和 secrets
+1. 新增一个 `AUTO_CHECKIN_CONFIG_ACC3`
+2. 把该变量值设为完整账号 JSON
 
 ## 本地使用
 
@@ -119,54 +126,52 @@ CLI 会输出：
 - 手动 `workflow_dispatch`
 - 失败时可选发送 Telegram 通知
 
-### 必需的 GitHub Variables
-
-请在仓库的 Variables 中添加：
-
-- `AUTO_CHECKIN_ACCOUNT_NAMES`
-- `AUTO_CHECKIN_ACC1_NAME`
-- `AUTO_CHECKIN_ACC1_SITE_TYPE`
-- `AUTO_CHECKIN_ACC1_BASE_URL`
-- `AUTO_CHECKIN_ACC1_AUTH_TYPE`
-- `AUTO_CHECKIN_ACC1_USER_ID`
-- `AUTO_CHECKIN_ACC1_ENABLED`
-- `AUTO_CHECKIN_ACC2_NAME`
-- `AUTO_CHECKIN_ACC2_SITE_TYPE`
-- `AUTO_CHECKIN_ACC2_BASE_URL`
-- `AUTO_CHECKIN_ACC2_AUTH_TYPE`
-- `AUTO_CHECKIN_ACC2_USER_ID`
-- `AUTO_CHECKIN_ACC2_ENABLED`
-
-如果暂时只用一个账号，可以先把 `acc2` 这一组变量留空，等需要时再补。
-
 ### 必需的 GitHub Secrets
 
-按每个账号的认证方式添加 secrets：
+请在仓库的 Secrets 中添加：
 
-- `AUTO_CHECKIN_ACC1_ACCESS_TOKEN`
-- `AUTO_CHECKIN_ACC1_COOKIE`
-- `AUTO_CHECKIN_ACC2_ACCESS_TOKEN`
-- `AUTO_CHECKIN_ACC2_COOKIE`
+- `AUTO_CHECKIN_CONFIG_ACC1`
+- `AUTO_CHECKIN_CONFIG_ACC2`
 
-说明：
-- 如果使用 `token` 认证，就填写 `ACCESS_TOKEN`，`COOKIE` 留空
-- 如果使用 `cookie` 认证，就填写 `COOKIE`，`ACCESS_TOKEN` 留空
+每个 secret 的值都应是一个完整账号 JSON。
+
+如果暂时只有一个账号：
+- 只需要填写 `AUTO_CHECKIN_CONFIG_ACC1`
+- `AUTO_CHECKIN_CONFIG_ACC2` 可以先留空
 
 ### 双账号配置示例
 
-- `AUTO_CHECKIN_ACCOUNT_NAMES=acc1,acc2`
-- `AUTO_CHECKIN_ACC1_SITE_TYPE=new-api`
-- `AUTO_CHECKIN_ACC1_BASE_URL=https://example.com`
-- `AUTO_CHECKIN_ACC1_AUTH_TYPE=token`
-- `AUTO_CHECKIN_ACC2_SITE_TYPE=new-api`
-- `AUTO_CHECKIN_ACC2_BASE_URL=https://example2.com`
-- `AUTO_CHECKIN_ACC2_AUTH_TYPE=cookie`
+`AUTO_CHECKIN_CONFIG_ACC1`:
 
-以后如果要新增 `acc3`：
-1. 把 `AUTO_CHECKIN_ACCOUNT_NAMES` 改成 `acc1,acc2,acc3`
-2. 新增 `AUTO_CHECKIN_ACC3_*` Variables
-3. 新增 `AUTO_CHECKIN_ACC3_ACCESS_TOKEN` 或 `AUTO_CHECKIN_ACC3_COOKIE` Secrets
-4. 复制 `.github/workflows/daily-checkin.yml` 里的 `acc2` 环境变量块，改名为 `acc3`
+```json
+{
+  "name": "main-account",
+  "siteType": "new-api",
+  "baseUrl": "https://example.com",
+  "authType": "token",
+  "userId": 123,
+  "accessToken": "your-token",
+  "enabled": true
+}
+```
+
+`AUTO_CHECKIN_CONFIG_ACC2`:
+
+```json
+{
+  "name": "backup-account",
+  "siteType": "new-api",
+  "baseUrl": "https://example2.com",
+  "authType": "cookie",
+  "cookie": "session=your-cookie",
+  "enabled": true
+}
+```
+
+以后如果要新增 `ACC3`：
+1. 新增一个 `AUTO_CHECKIN_CONFIG_ACC3` Secret
+2. 把完整账号 JSON 填进去
+3. 复制 `.github/workflows/daily-checkin.yml` 里的 `AUTO_CHECKIN_CONFIG_ACC2` 那一行，改成 `AUTO_CHECKIN_CONFIG_ACC3`
 
 ### 可选的 Telegram Secrets
 
