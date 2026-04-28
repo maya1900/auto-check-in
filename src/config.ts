@@ -33,43 +33,33 @@ const accountsSchema = z.array(accountSchema).min(1)
 const ACCOUNT_MANIFEST_ENV = "AUTO_CHECKIN_ACCOUNT_MANIFEST"
 const SLOT_ENV_PREFIX = "AUTO_CHECKIN_SLOT_"
 
-const accountManifestSchema = z.array(z.string().trim().min(1)).min(1)
-
 function readAccountConfigEntriesFromManifest(): Array<[string, string]> {
   const rawManifest = process.env[ACCOUNT_MANIFEST_ENV]
   if (typeof rawManifest !== "string" || rawManifest.trim().length === 0) {
     throw new Error(`${ACCOUNT_MANIFEST_ENV} environment variable is required`)
   }
 
-  let parsedManifest: unknown
-  try {
-    parsedManifest = JSON.parse(rawManifest)
-  } catch (error) {
-    throw new Error(
-      `${ACCOUNT_MANIFEST_ENV} must be valid JSON: ${error instanceof Error ? error.message : String(error)}`,
-    )
-  }
+  const slotSuffixes = rawManifest
+    .split(",")
+    .map((slotSuffix) => slotSuffix.trim())
+    .filter((slotSuffix) => slotSuffix.length > 0)
 
-  const manifestResult = accountManifestSchema.safeParse(parsedManifest)
-  if (!manifestResult.success) {
+  if (slotSuffixes.length === 0) {
     throw new Error(
-      manifestResult.error.issues.map((issue) => issue.message).join("; "),
+      `${ACCOUNT_MANIFEST_ENV} must contain at least one comma-separated slot suffix`,
     )
   }
 
   const entries: Array<[string, string]> = []
   const seenSlots = new Set<string>()
 
-  for (const slotSuffix of manifestResult.data) {
-    const normalizedSlot = slotSuffix.trim()
-    if (seenSlots.has(normalizedSlot)) {
-      throw new Error(
-        `${ACCOUNT_MANIFEST_ENV} contains duplicate slot suffix: ${normalizedSlot}`,
-      )
+  for (const slotSuffix of slotSuffixes) {
+    if (seenSlots.has(slotSuffix)) {
+      throw new Error(`${ACCOUNT_MANIFEST_ENV} contains duplicate slot suffix: ${slotSuffix}`)
     }
-    seenSlots.add(normalizedSlot)
+    seenSlots.add(slotSuffix)
 
-    const envName = `${SLOT_ENV_PREFIX}${normalizedSlot}`
+    const envName = `${SLOT_ENV_PREFIX}${slotSuffix}`
     const rawValue = process.env[envName]
     if (typeof rawValue !== "string" || rawValue.trim().length === 0) {
       throw new Error(

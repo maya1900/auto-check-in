@@ -34,13 +34,13 @@ pnpm install
 
 程序只使用一种配置方式：
 
-- `AUTO_CHECKIN_ACCOUNT_MANIFEST`：一个 JSON 数组，列出要执行的 slot 后缀
+- `AUTO_CHECKIN_ACCOUNT_MANIFEST`：一个逗号分隔字符串，列出要执行的 slot 后缀
 - `AUTO_CHECKIN_SLOT_XX`：每个 slot 对应一个完整账号 JSON
 
 示例：
 
 ```bash
-export AUTO_CHECKIN_ACCOUNT_MANIFEST='["01","02"]'
+export AUTO_CHECKIN_ACCOUNT_MANIFEST='01,02'
 
 export AUTO_CHECKIN_SLOT_01='{"name":"main-account","siteType":"new-api","baseUrl":"https://example.com","authType":"token","userId":123,"accessToken":"your-token","enabled":true}'
 
@@ -176,10 +176,10 @@ GitHub Actions 的 `schedule` 不能从 secret 动态读取，所以这里最简
 
 - `AUTO_CHECKIN_ACCOUNT_MANIFEST`
 
-值为 JSON 数组，按执行顺序列出要使用的 slot 后缀：
+值为逗号分隔字符串，按执行顺序列出要使用的 slot 后缀：
 
-```json
-["01", "02", "03"]
+```text
+01,02,03
 ```
 
 规则：
