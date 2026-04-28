@@ -60,17 +60,7 @@ jobs:
           fi
 
           if [ -f checkin.log ]; then
-            summary="$(python - <<'PY'
-            from pathlib import Path
-            text = Path('checkin.log').read_text(encoding='utf-8', errors='replace').splitlines()
-            selected = []
-            for line in text:
-                if line.startswith('Processed ') or line.startswith('success=') or line.startswith('['):
-                    selected.append(line)
-            summary = '\n'.join(selected[-20:]) if selected else 'No check-in summary captured.'
-            print(summary)
-            PY
-            )"
+            summary="$(python -c "from pathlib import Path; text = Path('checkin.log').read_text(encoding='utf-8', errors='replace').splitlines(); selected = [line for line in text if line.startswith('Processed ') or line.startswith('success=') or line.startswith('[')]; print('\\n'.join(selected[-20:]) if selected else 'No check-in summary captured.')")"
           else
             summary="No check-in log found."
           fi
