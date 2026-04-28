@@ -5,13 +5,34 @@ on:
     - cron: "17 1 * * *"
   workflow_dispatch:
 
+env:
+  AUTO_CHECKIN_ACCOUNT_MANIFEST: ${{ vars.AUTO_CHECKIN_ACCOUNT_MANIFEST }}
+
 jobs:
   checkin:
     runs-on: ubuntu-latest
     env:
       TZ: Asia/Shanghai
-      AUTO_CHECKIN_CONFIG_ACC1: ${{ secrets.AUTO_CHECKIN_CONFIG_ACC1 }}
-      AUTO_CHECKIN_CONFIG_ACC2: ${{ secrets.AUTO_CHECKIN_CONFIG_ACC2 }}
+      AUTO_CHECKIN_SLOT_01: ${{ secrets.AUTO_CHECKIN_SLOT_01 }}
+      AUTO_CHECKIN_SLOT_02: ${{ secrets.AUTO_CHECKIN_SLOT_02 }}
+      AUTO_CHECKIN_SLOT_03: ${{ secrets.AUTO_CHECKIN_SLOT_03 }}
+      AUTO_CHECKIN_SLOT_04: ${{ secrets.AUTO_CHECKIN_SLOT_04 }}
+      AUTO_CHECKIN_SLOT_05: ${{ secrets.AUTO_CHECKIN_SLOT_05 }}
+      AUTO_CHECKIN_SLOT_06: ${{ secrets.AUTO_CHECKIN_SLOT_06 }}
+      AUTO_CHECKIN_SLOT_07: ${{ secrets.AUTO_CHECKIN_SLOT_07 }}
+      AUTO_CHECKIN_SLOT_08: ${{ secrets.AUTO_CHECKIN_SLOT_08 }}
+      AUTO_CHECKIN_SLOT_09: ${{ secrets.AUTO_CHECKIN_SLOT_09 }}
+      AUTO_CHECKIN_SLOT_10: ${{ secrets.AUTO_CHECKIN_SLOT_10 }}
+      AUTO_CHECKIN_SLOT_11: ${{ secrets.AUTO_CHECKIN_SLOT_11 }}
+      AUTO_CHECKIN_SLOT_12: ${{ secrets.AUTO_CHECKIN_SLOT_12 }}
+      AUTO_CHECKIN_SLOT_13: ${{ secrets.AUTO_CHECKIN_SLOT_13 }}
+      AUTO_CHECKIN_SLOT_14: ${{ secrets.AUTO_CHECKIN_SLOT_14 }}
+      AUTO_CHECKIN_SLOT_15: ${{ secrets.AUTO_CHECKIN_SLOT_15 }}
+      AUTO_CHECKIN_SLOT_16: ${{ secrets.AUTO_CHECKIN_SLOT_16 }}
+      AUTO_CHECKIN_SLOT_17: ${{ secrets.AUTO_CHECKIN_SLOT_17 }}
+      AUTO_CHECKIN_SLOT_18: ${{ secrets.AUTO_CHECKIN_SLOT_18 }}
+      AUTO_CHECKIN_SLOT_19: ${{ secrets.AUTO_CHECKIN_SLOT_19 }}
+      AUTO_CHECKIN_SLOT_20: ${{ secrets.AUTO_CHECKIN_SLOT_20 }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
     steps:
@@ -31,6 +52,77 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Prepare account configs
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+          import sys
+
+          manifest_raw = os.environ.get('AUTO_CHECKIN_ACCOUNT_MANIFEST', '').strip()
+          if not manifest_raw:
+              sys.exit('AUTO_CHECKIN_ACCOUNT_MANIFEST repository variable is required.')
+
+          try:
+              manifest = json.loads(manifest_raw)
+          except json.JSONDecodeError as error:
+              sys.exit(f'AUTO_CHECKIN_ACCOUNT_MANIFEST must be valid JSON: {error}')
+
+          if not isinstance(manifest, list) or not manifest:
+              sys.exit('AUTO_CHECKIN_ACCOUNT_MANIFEST must be a non-empty JSON array.')
+
+          account_manifest = []
+          seen_ids = set()
+          seen_env_names = set()
+
+          def sanitize_id(value: str) -> str:
+              sanitized = re.sub(r'[^A-Za-z0-9_]+', '_', value.strip()).strip('_').upper()
+              if not sanitized:
+                  sys.exit(f'Account id {value!r} becomes empty after sanitization.')
+              return sanitized
+
+          github_env_path = os.environ['GITHUB_ENV']
+          with open(github_env_path, 'a', encoding='utf-8') as github_env:
+              for entry in manifest:
+                  if not isinstance(entry, dict):
+                      sys.exit('Each manifest entry must be an object.')
+
+                  raw_id = entry.get('id')
+                  raw_slot = entry.get('slot')
+                  if not isinstance(raw_id, str) or not raw_id.strip():
+                      sys.exit('Each manifest entry must include a non-empty string id.')
+                  if not isinstance(raw_slot, str) or not raw_slot.strip():
+                      sys.exit(f'Manifest entry for {raw_id!r} must include a non-empty string slot.')
+
+                  if raw_id in seen_ids:
+                      sys.exit(f'Duplicate account id in manifest: {raw_id}')
+                  seen_ids.add(raw_id)
+
+                  slot = raw_slot.strip()
+                  env_name = f'AUTO_CHECKIN_SLOT_{slot}'
+                  if env_name in seen_env_names:
+                      sys.exit(f'Duplicate slot in manifest: {slot}')
+                  seen_env_names.add(env_name)
+
+                  raw_config = os.environ.get(env_name, '').strip()
+                  if not raw_config:
+                      sys.exit(f'Manifest references missing or empty secret slot: {env_name}')
+
+                  config_env_name = f'AUTO_CHECKIN_CONFIG_{sanitize_id(raw_id)}'
+                  github_env.write(f'{config_env_name}<<__AUTO_CHECKIN_CONFIG__\n{raw_config}\n__AUTO_CHECKIN_CONFIG__\n')
+                  account_manifest.append({
+                      'id': raw_id.strip(),
+                      'envName': config_env_name,
+                  })
+
+              github_env.write(
+                  'AUTO_CHECKIN_ACCOUNT_MANIFEST<<__AUTO_CHECKIN_MANIFEST__\n'
+                  + json.dumps(account_manifest, ensure_ascii=False)
+                  + '\n__AUTO_CHECKIN_MANIFEST__\n'
+              )
+          PY
 
       - name: Typecheck
         run: pnpm typecheck

@@ -32,12 +32,16 @@ pnpm install
 
 ## 配置方式
 
-程序会自动扫描所有以 `AUTO_CHECKIN_CONFIG_` 开头的环境变量。每个变量的值都必须是一个完整的账号配置 JSON。
+程序支持两种账号加载方式：
 
-这意味着：
-- 新增一个账号，只需要新增一个环境变量或 GitHub Secret
-- 删除一个账号，只需要删掉对应的环境变量或 Secret
-- 不需要再维护单独的账号列表变量
+1. **直接扫描环境变量**：读取所有以 `AUTO_CHECKIN_CONFIG_` 开头的变量
+2. **显式清单模式**：读取 `AUTO_CHECKIN_ACCOUNT_MANIFEST` 指定的账号变量列表
+
+每个账号变量的值都必须是一个完整的账号配置 JSON。
+
+### 直接扫描模式
+
+这是本地最简单的用法。程序会自动扫描所有以 `AUTO_CHECKIN_CONFIG_` 开头的环境变量。
 
 示例：
 
@@ -46,6 +50,28 @@ export AUTO_CHECKIN_CONFIG_ACC1='{"name":"main-account","siteType":"new-api","ba
 
 export AUTO_CHECKIN_CONFIG_ACC2='{"name":"backup-account","siteType":"new-api","baseUrl":"https://example2.com","authType":"cookie","cookie":"session=your-cookie","enabled":true}'
 ```
+
+### 显式清单模式
+
+如果设置了 `AUTO_CHECKIN_ACCOUNT_MANIFEST`，程序会只加载清单里列出的账号，并按清单顺序执行。
+
+示例：
+
+```bash
+export AUTO_CHECKIN_ACCOUNT_MANIFEST='[
+  {"id":"main","envName":"AUTO_CHECKIN_CONFIG_MAIN"},
+  {"id":"backup","envName":"AUTO_CHECKIN_CONFIG_BACKUP"}
+]'
+
+export AUTO_CHECKIN_CONFIG_MAIN='{"name":"main-account","siteType":"new-api","baseUrl":"https://example.com","authType":"token","userId":123,"accessToken":"your-token","enabled":true}'
+
+export AUTO_CHECKIN_CONFIG_BACKUP='{"name":"backup-account","siteType":"new-api","baseUrl":"https://example2.com","authType":"cookie","cookie":"session=your-cookie","enabled":true}'
+```
+
+在这种模式下：
+- `id` 用于标识清单项，并要求唯一
+- `envName` 是实际存放账号 JSON 的环境变量名
+- 如果某个 `envName` 缺失、为空或重复，程序会直接报错
 
 ### 单个账号配置字段说明
 
@@ -161,22 +187,59 @@ on:
 
 GitHub Actions 的 `schedule` 不能从 secret 动态读取，所以这里最简单可靠的方式就是直接改 workflow 文件。
 
-### 必需的 GitHub Secrets
+### 必需的 GitHub Secrets / Variables
 
-请在仓库的 Secrets 中添加：
+请在仓库的 **Secrets and variables → Actions** 中配置：
 
-- `AUTO_CHECKIN_CONFIG_ACC1`
-- `AUTO_CHECKIN_CONFIG_ACC2`
+#### Repository Variable
 
-每个 secret 的值都应是一个完整账号 JSON。
+- `AUTO_CHECKIN_ACCOUNT_MANIFEST`
 
-如果暂时只有一个账号：
-- 只需要填写 `AUTO_CHECKIN_CONFIG_ACC1`
-- `AUTO_CHECKIN_CONFIG_ACC2` 可以先留空
+值为 JSON 数组，每项指定一个用户可读的账号 ID 和它绑定的 slot：
 
-### 双账号配置示例
+```json
+[
+  { "id": "main", "slot": "01" },
+  { "id": "backup", "slot": "02" },
+  { "id": "ciallo", "slot": "03" }
+]
+```
 
-`AUTO_CHECKIN_CONFIG_ACC1`:
+规则：
+- `id` 由你自定义，用来表示这个账号
+- `slot` 对应 workflow 里预留的 secret 槽位
+- 每个 `id` 和 `slot` 都必须唯一
+
+#### Repository Secrets
+
+每个 slot 对应一个独立 secret，secret 值为完整账号 JSON。
+
+当前 workflow 预留了这些 slot：
+
+- `AUTO_CHECKIN_SLOT_01`
+- `AUTO_CHECKIN_SLOT_02`
+- `AUTO_CHECKIN_SLOT_03`
+- `AUTO_CHECKIN_SLOT_04`
+- `AUTO_CHECKIN_SLOT_05`
+- `AUTO_CHECKIN_SLOT_06`
+- `AUTO_CHECKIN_SLOT_07`
+- `AUTO_CHECKIN_SLOT_08`
+- `AUTO_CHECKIN_SLOT_09`
+- `AUTO_CHECKIN_SLOT_10`
+- `AUTO_CHECKIN_SLOT_11`
+- `AUTO_CHECKIN_SLOT_12`
+- `AUTO_CHECKIN_SLOT_13`
+- `AUTO_CHECKIN_SLOT_14`
+- `AUTO_CHECKIN_SLOT_15`
+- `AUTO_CHECKIN_SLOT_16`
+- `AUTO_CHECKIN_SLOT_17`
+- `AUTO_CHECKIN_SLOT_18`
+- `AUTO_CHECKIN_SLOT_19`
+- `AUTO_CHECKIN_SLOT_20`
+
+例如：
+
+`AUTO_CHECKIN_SLOT_01`:
 
 ```json
 {
@@ -190,7 +253,7 @@ GitHub Actions 的 `schedule` 不能从 secret 动态读取，所以这里最简
 }
 ```
 
-`AUTO_CHECKIN_CONFIG_ACC2`:
+`AUTO_CHECKIN_SLOT_02`:
 
 ```json
 {
@@ -203,10 +266,13 @@ GitHub Actions 的 `schedule` 不能从 secret 动态读取，所以这里最简
 }
 ```
 
-以后如果要新增 `ACC3`：
-1. 新增一个 `AUTO_CHECKIN_CONFIG_ACC3` Secret
-2. 把完整账号 JSON 填进去
-3. 复制 `.github/workflows/daily-checkin.yml` 里的 `AUTO_CHECKIN_CONFIG_ACC2` 那一行，改成 `AUTO_CHECKIN_CONFIG_ACC3`
+以后如果要新增账号：
+1. 选一个空闲 slot，例如 `04`
+2. 新增或编辑对应 secret，例如 `AUTO_CHECKIN_SLOT_04`
+3. 把 `{ "id": "your-name", "slot": "04" }` 加进 `AUTO_CHECKIN_ACCOUNT_MANIFEST`
+4. 不需要修改 workflow 文件
+
+如果 20 个 slot 不够，再扩容 workflow 里的 slot 列表即可。
 
 ### 可选的 Telegram Secrets
 
