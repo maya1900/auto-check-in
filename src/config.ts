@@ -30,47 +30,15 @@ const accountSchema = z
   })
 
 const accountsSchema = z.array(accountSchema).min(1)
-const CONFIG_PREFIX = "AUTO_CHECKIN_CONFIG_"
 const ACCOUNT_MANIFEST_ENV = "AUTO_CHECKIN_ACCOUNT_MANIFEST"
+const SLOT_ENV_PREFIX = "AUTO_CHECKIN_SLOT_"
 
-const accountManifestSchema = z
-  .array(
-    z.object({
-      id: z.string().trim().min(1),
-      envName: z.string().trim().min(1),
-    }),
-  )
-  .min(1)
+const accountManifestSchema = z.array(z.string().trim().min(1)).min(1)
 
-function readAccountConfigEntriesFromEnv(): Array<[string, string]> {
-  const entries: Array<[string, string]> = []
-
-  for (const [name, value] of Object.entries(process.env)) {
-    if (!name.startsWith(CONFIG_PREFIX) || typeof value !== "string") {
-      continue
-    }
-
-    const trimmed = value.trim()
-    if (trimmed.length === 0) {
-      continue
-    }
-
-    entries.push([name, trimmed])
-  }
-
-  entries.sort(([left], [right]) => left.localeCompare(right))
-
-  if (entries.length === 0) {
-    throw new Error(`At least one ${CONFIG_PREFIX}* environment variable is required`)
-  }
-
-  return entries
-}
-
-function readAccountConfigEntriesFromManifest(): Array<[string, string]> | null {
+function readAccountConfigEntriesFromManifest(): Array<[string, string]> {
   const rawManifest = process.env[ACCOUNT_MANIFEST_ENV]
   if (typeof rawManifest !== "string" || rawManifest.trim().length === 0) {
-    return null
+    throw new Error(`${ACCOUNT_MANIFEST_ENV} environment variable is required`)
   }
 
   let parsedManifest: unknown
@@ -90,30 +58,26 @@ function readAccountConfigEntriesFromManifest(): Array<[string, string]> | null 
   }
 
   const entries: Array<[string, string]> = []
-  const seenIds = new Set<string>()
-  const seenEnvNames = new Set<string>()
+  const seenSlots = new Set<string>()
 
-  for (const entry of manifestResult.data) {
-    if (seenIds.has(entry.id)) {
-      throw new Error(`${ACCOUNT_MANIFEST_ENV} contains duplicate account id: ${entry.id}`)
-    }
-    seenIds.add(entry.id)
-
-    if (seenEnvNames.has(entry.envName)) {
+  for (const slotSuffix of manifestResult.data) {
+    const normalizedSlot = slotSuffix.trim()
+    if (seenSlots.has(normalizedSlot)) {
       throw new Error(
-        `${ACCOUNT_MANIFEST_ENV} contains duplicate envName: ${entry.envName}`,
+        `${ACCOUNT_MANIFEST_ENV} contains duplicate slot suffix: ${normalizedSlot}`,
       )
     }
-    seenEnvNames.add(entry.envName)
+    seenSlots.add(normalizedSlot)
 
-    const rawValue = process.env[entry.envName]
+    const envName = `${SLOT_ENV_PREFIX}${normalizedSlot}`
+    const rawValue = process.env[envName]
     if (typeof rawValue !== "string" || rawValue.trim().length === 0) {
       throw new Error(
-        `${ACCOUNT_MANIFEST_ENV} references missing or empty environment variable: ${entry.envName}`,
+        `${ACCOUNT_MANIFEST_ENV} references missing or empty environment variable: ${envName}`,
       )
     }
 
-    entries.push([entry.envName, rawValue.trim()])
+    entries.push([envName, rawValue.trim()])
   }
 
   return entries
@@ -130,8 +94,9 @@ function parseAccountConfigValue(envName: string, raw: string): unknown {
 }
 
 export function loadAccountsFromEnv(): AccountConfig[] {
-  const entries = readAccountConfigEntriesFromManifest() ?? readAccountConfigEntriesFromEnv()
-  const parsedAccounts = entries.map(([envName, raw]) => parseAccountConfigValue(envName, raw))
+  const parsedAccounts = readAccountConfigEntriesFromManifest().map(([envName, raw]) =>
+    parseAccountConfigValue(envName, raw),
+  )
 
   const result = accountsSchema.safeParse(parsedAccounts)
   if (!result.success) {
