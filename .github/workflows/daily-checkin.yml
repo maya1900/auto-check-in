@@ -91,12 +91,12 @@ jobs:
           fi
 
           if [ -f checkin.log ]; then
-            summary="$(python -c "from pathlib import Path; text = Path('checkin.log').read_text(encoding='utf-8', errors='replace').splitlines(); selected = [line for line in text if line.startswith('Processed ') or line.startswith('success=') or line.startswith('[')]; print('\\n'.join(selected[-20:]) if selected else 'No check-in summary captured.')")"
+            summary="$(python3 -c "from pathlib import Path; text = Path('checkin.log').read_text(encoding='utf-8', errors='replace').splitlines(); selected = [line for line in text if line.startswith('Processed ') or line.startswith('success=') or line.startswith('[')]; print('\\n'.join(selected[-20:]) if selected else 'No check-in summary captured.')")"
           else
             summary="No check-in log found."
           fi
 
-          message="${status_icon} auto-check-in ${status_text}%0ARepo: ${REPO}%0ABranch: ${REF_NAME}%0ARun: #${RUN_NUMBER}%0Ahttps://github.com/${REPO}/actions/runs/${RUN_ID}%0A%0A${summary}"
+          message="${status_icon} auto-check-in ${status_text}\nRepo: ${REPO}\nBranch: ${REF_NAME}\nRun: #${RUN_NUMBER}\nhttps://github.com/${REPO}/actions/runs/${RUN_ID}\n\n${summary}"
           curl -sS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -d "chat_id=${TELEGRAM_CHAT_ID}" \
             --data-urlencode "text=${message}"
