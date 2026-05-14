@@ -72,7 +72,7 @@ jobs:
       - name: Run auto check-in
         run: |
           set -o pipefail
-          pnpm checkin 2>&1 | tee checkin.log
+          pnpm checkin 2>&1 | tee checkin.log || true
 
       - name: Notify Telegram summary
         if: always() && env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
@@ -81,19 +81,19 @@ jobs:
           RUN_ID: ${{ github.run_id }}
           RUN_NUMBER: ${{ github.run_number }}
           REF_NAME: ${{ github.ref_name }}
-          JOB_STATUS: ${{ job.status }}
         run: |
           status_icon="✅"
           status_text="success"
-          if [ "${JOB_STATUS}" != "success" ]; then
-            status_icon="❌"
-            status_text="failed"
-          fi
 
           if [ -f checkin.log ]; then
             summary="$(python3 -c "from pathlib import Path; text = Path('checkin.log').read_text(encoding='utf-8', errors='replace').splitlines(); selected = [line for line in text if line.startswith('Processed ') or line.startswith('success=') or line.startswith('[')]; print('\\n'.join(selected[-20:]) if selected else 'No check-in summary captured.')")"
           else
             summary="No check-in log found."
+          fi
+
+          if printf '%s\n' "${summary}" | grep -Eq '^success=.* failed=[1-9][0-9]*'; then
+            status_icon="❌"
+            status_text="failed"
           fi
 
           message="${status_icon} auto-check-in ${status_text}\nRepo: ${REPO}\nBranch: ${REF_NAME}\nRun: #${RUN_NUMBER}\nhttps://github.com/${REPO}/actions/runs/${RUN_ID}\n\n${summary}"
