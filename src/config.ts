@@ -11,6 +11,7 @@ const accountSchema = z
     userId: z.number().int().positive().optional(),
     accessToken: z.string().trim().min(1).optional(),
     cookie: z.string().trim().min(1).optional(),
+    extraHeaders: z.record(z.string().trim().min(1), z.string()).optional(),
     enabled: z.boolean().optional(),
   })
   .superRefine((account, ctx) => {

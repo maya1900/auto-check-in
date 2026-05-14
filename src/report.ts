@@ -27,7 +27,7 @@ export function printReport(results: CheckinResult[]): number {
     )
   }
 
-  return 0
+  return counts.failed > 0 ? 1 : 0
 }
 
 export function buildSkippedResult(

@@ -30,6 +30,7 @@ export interface AccountConfig {
   userId?: number
   accessToken?: string
   cookie?: string
+  extraHeaders?: Record<string, string>
   enabled: boolean
 }
 

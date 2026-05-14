@@ -16,6 +16,7 @@ export async function postJson<TData = unknown>(
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Pragma: "no-cache",
+    ...(account.extraHeaders ?? {}),
     ...extraHeaders,
   }
 

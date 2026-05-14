@@ -19,6 +19,11 @@ v1 暂不包含：
 - Turnstile / 浏览器辅助签到流程
 - 重试队列或状态持久化
 
+这意味着：
+- 遇到 Cloudflare / Turnstile / 其他浏览器挑战时，CLI 只能标记为 `skipped`
+- 某些站点如果只是额外要求固定请求头，可通过 `extraHeaders` 兼容
+- 某些站点如果要求动态签名、前端计算或挑战页面执行，仍不适合在当前纯 HTTP CLI 里跑
+
 ## 环境要求
 
 - Node.js 20+
@@ -64,6 +69,7 @@ export AUTO_CHECKIN_SLOT_02='{"name":"backup-account","siteType":"new-api","base
 - `userId`：可选；某些站点需要兼容用户 ID 请求头时可配置
 - `accessToken`：当 `authType=token` 时必填
 - `cookie`：当 `authType=cookie` 时必填
+- `extraHeaders`：可选；给个别非标准站点补充自定义请求头
 - `enabled`：可选，默认是 `true`
 
 示例 JSON：
@@ -76,6 +82,9 @@ export AUTO_CHECKIN_SLOT_02='{"name":"backup-account","siteType":"new-api","base
   "authType": "token",
   "userId": 123,
   "accessToken": "your-token",
+  "extraHeaders": {
+    "X-Custom-Signature": "your-signature"
+  },
   "enabled": true
 }
 ```
@@ -119,9 +128,9 @@ CLI 会输出：
 - 每个账号一行结果
 
 退出码规则：
-- 始终返回 `0`
 - 单个账号即使请求失败，也不会中断后续账号执行
-- 失败或跳过的账号会保留在最终统计里，并显示原因
+- 只要存在 `failed` 账号，进程最终返回 `1`
+- `skipped` 账号会保留在最终统计里，但不会单独导致进程失败
 
 ## GitHub Actions
 

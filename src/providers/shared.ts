@@ -7,7 +7,12 @@ const CLOUDFLARE_SNIPPETS = [
   "challenges.cloudflare.com",
   "cloudflare",
 ]
-const TURNSTILE_SNIPPETS = ["turnstile token 为空", "turnstile"]
+const TURNSTILE_SNIPPETS = [
+  "turnstile token 为空",
+  "turnstile token empty",
+  "missing turnstile",
+  "turnstile",
+]
 
 export function normalizeMessage(message: unknown): string {
   return typeof message === "string" ? message.trim() : ""
@@ -36,6 +41,13 @@ function classifySkippableMessage(message: string):
     return {
       reasonCode: "turnstile_required",
       message: "Turnstile token required",
+    }
+  }
+
+  if (normalized.includes("challenge")) {
+    return {
+      reasonCode: "challenge_required",
+      message: "Browser challenge required",
     }
   }
 }
