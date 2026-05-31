@@ -1,8 +1,22 @@
 import {
   CHECKIN_RESULT_STATUS,
+  type CheckinDiagnostics,
   type CheckinResult,
   type CheckinResultStatus,
 } from "./types.js"
+
+function formatDiagnostics(diag: CheckinDiagnostics): string {
+  const parts: string[] = []
+  if (typeof diag.statusCode === "number") parts.push(`status=${diag.statusCode}`)
+
+  const headers = diag.headers ?? {}
+  for (const [key, value] of Object.entries(headers)) {
+    parts.push(`${key}=${JSON.stringify(value)}`)
+  }
+
+  if (diag.bodySnippet) parts.push(`body=${JSON.stringify(diag.bodySnippet)}`)
+  return parts.join(" ")
+}
 
 export function printReport(results: CheckinResult[]): number {
   const counts: Record<CheckinResultStatus, number> = {
@@ -25,6 +39,14 @@ export function printReport(results: CheckinResult[]): number {
     console.log(
       `[${result.status}] ${result.accountName} (${result.siteType}) - ${result.message}`,
     )
+    if (
+      result.diagnostics &&
+      result.status !== CHECKIN_RESULT_STATUS.SUCCESS &&
+      result.status !== CHECKIN_RESULT_STATUS.ALREADY_CHECKED
+    ) {
+      const formatted = formatDiagnostics(result.diagnostics)
+      if (formatted) console.log(`  diag: ${formatted}`)
+    }
   }
 
   return counts.failed > 0 ? 1 : 0

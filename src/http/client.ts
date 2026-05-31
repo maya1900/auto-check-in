@@ -1,10 +1,46 @@
-import { AUTH_TYPES, type AccountConfig } from "../types.js"
+import { AUTH_TYPES, type AccountConfig, type CheckinDiagnostics } from "../types.js"
 
 export interface ApiResponse<TData = unknown> {
   success?: boolean
   message?: string
   data?: TData
   [key: string]: unknown
+}
+
+export class HttpRequestError extends Error {
+  statusCode?: number
+  diagnostics: CheckinDiagnostics
+
+  constructor(message: string, diagnostics: CheckinDiagnostics) {
+    super(message)
+    this.name = "HttpRequestError"
+    this.statusCode = diagnostics.statusCode
+    this.diagnostics = diagnostics
+  }
+}
+
+const DIAGNOSTIC_HEADERS = [
+  "server",
+  "content-type",
+  "cf-ray",
+  "cf-mitigated",
+  "cf-cache-status",
+  "x-frame-options",
+  "x-cf-challenge",
+] as const
+
+function pickDiagnosticHeaders(headers: Headers): Record<string, string> {
+  const picked: Record<string, string> = {}
+  for (const name of DIAGNOSTIC_HEADERS) {
+    const value = headers.get(name)
+    if (value) picked[name] = value
+  }
+  return picked
+}
+
+function snippet(text: string, max = 200): string {
+  const collapsed = text.replace(/\s+/g, " ").trim()
+  return collapsed.length > max ? `${collapsed.slice(0, max)}…` : collapsed
 }
 
 export async function postJson<TData = unknown>(
@@ -52,9 +88,11 @@ export async function postJson<TData = unknown>(
 
   if (!response.ok) {
     const message = payload?.message || `HTTP ${response.status}`
-    const error = new Error(message)
-    ;(error as Error & { statusCode?: number }).statusCode = response.status
-    throw error
+    throw new HttpRequestError(message, {
+      statusCode: response.status,
+      headers: pickDiagnosticHeaders(response.headers),
+      bodySnippet: text ? snippet(text) : undefined,
+    })
   }
 
   return payload ?? {}

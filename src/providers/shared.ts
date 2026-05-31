@@ -1,4 +1,9 @@
-import { CHECKIN_RESULT_STATUS, type CheckinResult } from "../types.js"
+import { HttpRequestError } from "../http/client.js"
+import {
+  CHECKIN_RESULT_STATUS,
+  type CheckinDiagnostics,
+  type CheckinResult,
+} from "../types.js"
 
 const ALREADY_CHECKED_SNIPPETS = ["今天已经签到", "已经签到", "已签到", "already"]
 const CLOUDFLARE_SNIPPETS = [
@@ -67,6 +72,9 @@ export function resolveErrorResult(params: {
     return String(params.error)
   })()
 
+  const diagnostics: CheckinDiagnostics | undefined =
+    params.error instanceof HttpRequestError ? params.error.diagnostics : undefined
+
   if (message && isAlreadyCheckedMessage(message)) {
     return buildResult({
       accountName: params.accountName,
@@ -74,10 +82,14 @@ export function resolveErrorResult(params: {
       status: CHECKIN_RESULT_STATUS.ALREADY_CHECKED,
       message,
       reasonCode: "already_checked",
+      diagnostics,
     })
   }
 
-  const skippable = message ? classifySkippableMessage(message) : undefined
+  const haystack = [message, diagnostics?.bodySnippet, diagnostics?.headers?.server]
+    .filter(Boolean)
+    .join(" ")
+  const skippable = haystack ? classifySkippableMessage(haystack) : undefined
   if (skippable) {
     return buildResult({
       accountName: params.accountName,
@@ -85,6 +97,7 @@ export function resolveErrorResult(params: {
       status: CHECKIN_RESULT_STATUS.SKIPPED,
       message: skippable.message,
       reasonCode: skippable.reasonCode,
+      diagnostics,
     })
   }
 
@@ -94,5 +107,6 @@ export function resolveErrorResult(params: {
     status: CHECKIN_RESULT_STATUS.FAILED,
     message: message || "Unknown error",
     reasonCode: "request_failed",
+    diagnostics,
   })
 }

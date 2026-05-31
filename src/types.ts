@@ -34,12 +34,19 @@ export interface AccountConfig {
   enabled: boolean
 }
 
+export interface CheckinDiagnostics {
+  statusCode?: number
+  headers?: Record<string, string>
+  bodySnippet?: string
+}
+
 export interface CheckinResult {
   accountName: string
   siteType: SiteType
   status: CheckinResultStatus
   message: string
   reasonCode?: string
+  diagnostics?: CheckinDiagnostics
 }
 
 export interface CheckinProvider {
