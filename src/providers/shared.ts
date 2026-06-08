@@ -6,11 +6,12 @@ import {
 } from "../types.js"
 
 const ALREADY_CHECKED_SNIPPETS = ["今天已经签到", "已经签到", "已签到", "already"]
-const CLOUDFLARE_SNIPPETS = [
+const CLOUDFLARE_CHALLENGE_SNIPPETS = [
   "just a moment...",
   "enable javascript and cookies to continue",
   "challenges.cloudflare.com",
-  "cloudflare",
+  "cf-challenge",
+  "cf-turnstile",
 ]
 const TURNSTILE_SNIPPETS = [
   "turnstile token 为空",
@@ -43,7 +44,7 @@ export function classifySkippableMessage(
   | undefined {
   const normalized = message.toLowerCase()
 
-  if (CLOUDFLARE_SNIPPETS.some((snippet) => normalized.includes(snippet))) {
+  if (CLOUDFLARE_CHALLENGE_SNIPPETS.some((snippet) => normalized.includes(snippet))) {
     return {
       reasonCode: "cloudflare_protected",
       message: buildManualCheckinMessage(manualCheckinUrl),
@@ -97,7 +98,7 @@ export function resolveErrorResult(params: {
     })
   }
 
-  const haystack = [message, classificationText, diagnostics?.headers?.server]
+  const haystack = [message, classificationText]
     .filter(Boolean)
     .join(" ")
   const skippable = haystack

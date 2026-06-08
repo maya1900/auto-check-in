@@ -13,6 +13,7 @@ const SECRET_VALUES_ENV = "AUTO_CHECKIN_SECRET_VALUES_JSON"
 const accountEntrySchema = z.object({
   name: z.string().trim().min(1),
   baseUrl: z.url(),
+  userId: z.number().int().positive().optional(),
   tokenEnv: z
     .string()
     .trim()
@@ -108,6 +109,7 @@ export function loadAccountsFromEnv(options: LoadAccountsOptions = {}): AccountC
     siteType: SITE_TYPES.NEW_API,
     baseUrl: account.baseUrl.replace(/\/+$/, ""),
     authType: AUTH_TYPES.TOKEN,
+    userId: account.userId,
     accessToken: resolveToken(account, env),
     enabled: account.enabled ?? true,
   }))

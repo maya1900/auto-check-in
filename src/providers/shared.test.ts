@@ -38,4 +38,22 @@ describe("resolveErrorResult", () => {
       diagnostics: { statusCode: 403 },
     })
   })
+
+  it("does not classify a plain Cloudflare-served 401 as a browser challenge", () => {
+    expect(
+      resolveErrorResult({
+        accountName: "main",
+        siteType: "new-api",
+        error: new HttpRequestError("Unauthorized", {
+          statusCode: 401,
+          headers: { server: "cloudflare" },
+        }),
+        manualCheckinUrl: "https://example.com",
+      }),
+    ).toMatchObject({
+      status: CHECKIN_RESULT_STATUS.FAILED,
+      reasonCode: "request_failed",
+      message: "Unauthorized",
+    })
+  })
 })

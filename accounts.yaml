@@ -1,6 +1,7 @@
 accounts:
 - name: joverna
   baseUrl: https://jiuuij.de5.net
+  userId: 6374
   tokenEnv: JOVERNA
 - name: elysiver
   baseUrl: https://elysiver.h-e.top

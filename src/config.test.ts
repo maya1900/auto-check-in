@@ -19,6 +19,7 @@ describe("loadAccountsFromEnv", () => {
 accounts:
   - name: main
     baseUrl: https://example.com/
+    userId: 123
     tokenEnv: NEW_API_TOKEN_MAIN
 `)
 
@@ -33,6 +34,7 @@ accounts:
         siteType: "new-api",
         baseUrl: "https://example.com",
         authType: "token",
+        userId: 123,
         accessToken: "token-value",
         enabled: true,
       },

@@ -1,4 +1,5 @@
 accounts:
   - name: example
     baseUrl: https://example.com
+    userId: 123
     tokenEnv: NEW_API_TOKEN_EXAMPLE

@@ -66,6 +66,13 @@ export async function postJson<TData = unknown>(
     headers.Authorization = `Bearer ${account.accessToken}`
   }
 
+  if (typeof account.userId === "number") {
+    const userId = String(account.userId)
+    headers["X-User-Id"] = userId
+    headers["X-User-ID"] = userId
+    headers["New-Api-User"] = userId
+  }
+
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
   let response: Response
@@ -99,10 +106,14 @@ export async function postJson<TData = unknown>(
 
   if (!response.ok) {
     const message = payload?.message || `HTTP ${response.status}`
-    throw new HttpRequestError(message, {
-      statusCode: response.status,
-      headers: pickDiagnosticHeaders(response.headers),
-    }, text ? snippet(text) : undefined)
+    throw new HttpRequestError(
+      message,
+      {
+        statusCode: response.status,
+        headers: pickDiagnosticHeaders(response.headers),
+      },
+      text ? snippet(text) : undefined,
+    )
   }
 
   return payload ?? {}

@@ -9,6 +9,7 @@ const account: AccountConfig = {
   baseUrl: "https://example.com",
   authType: "token",
   accessToken: "token",
+  userId: 123,
   enabled: true,
 }
 
@@ -33,6 +34,9 @@ describe("postJson", () => {
         headers: expect.objectContaining({
           Authorization: "Bearer token",
           "Content-Type": "application/json",
+          "New-Api-User": "123",
+          "X-User-ID": "123",
+          "X-User-Id": "123",
         }),
       }),
     )

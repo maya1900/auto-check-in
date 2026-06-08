@@ -25,6 +25,7 @@ export interface AccountConfig {
   siteType: SiteType
   baseUrl: string
   authType: AuthType
+  userId?: number
   accessToken?: string
   enabled: boolean
 }

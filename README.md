@@ -54,6 +54,7 @@ cp accounts.example.yaml accounts.yaml
 accounts:
   - name: site-a
     baseUrl: https://site-a.example
+    userId: 123
     tokenEnv: NEW_API_TOKEN_SITE_A
 
   - name: site-b
@@ -65,6 +66,7 @@ accounts:
 
 - `name`：日志中显示的账号名，必须唯一
 - `baseUrl`：new-api 站点根地址
+- `userId`：可选；个别站点要求 `New-Api-User` 相关请求头时填写
 - `tokenEnv`：token 对应的环境变量名 / GitHub Secret 名
 - `enabled`：可选，设为 `false` 时跳过该账号
 
