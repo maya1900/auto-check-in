@@ -5,16 +5,20 @@ accounts:
   tokenEnv: JOVERNA
 - name: elysiver
   baseUrl: https://elysiver.h-e.top
+  userId: 20214
   tokenEnv: ELYSIVER
 - name: embedding & reranker
   baseUrl: https://router.tumuer.me
   tokenEnv: EMBEDDING
 - name: chy
   baseUrl: https://chybenzun.top
+  userId: 87226
   tokenEnv: CHY
 - name: ly
   baseUrl: https://free.lyclaude.site
+  userId: 5129
   tokenEnv: LY
 - name: muyuan
   baseUrl: https://muyuan.do
+  userId: 11181
   tokenEnv: MUYUAN
