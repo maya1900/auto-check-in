@@ -12,7 +12,7 @@ accounts:
   tokenEnv: EMBEDDING
 - name: chy
   baseUrl: https://chybenzun.top
-  userId: 87226
+  userId: 4045
   tokenEnv: CHY
 - name: ly
   baseUrl: https://free.lyclaude.site
