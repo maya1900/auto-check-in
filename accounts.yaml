@@ -22,3 +22,7 @@ accounts:
   baseUrl: https://muyuan.do
   userId: 11181
   tokenEnv: MUYUAN
+- name: baige
+  baseUrl: https://api.sccens.net
+  userId: 1095
+  tokenEnv: BAIGE
