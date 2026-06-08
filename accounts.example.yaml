@@ -1,0 +1,4 @@
+accounts:
+  - name: example
+    baseUrl: https://example.com
+    tokenEnv: NEW_API_TOKEN_EXAMPLE

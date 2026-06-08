@@ -1,28 +1,31 @@
 # auto-check-in
 
-一个面向 `new-api` 兼容站点的极简独立每日自动签到 CLI。
+一个面向 `new-api` 兼容站点的极简每日自动签到 CLI。
 
 ## 功能说明
 
-- 通过环境变量读取账号配置
-- 对每个已配置的 `new-api` 账号执行每日签到
-- 在标准输出中打印简洁的执行结果摘要
-- 保留真实签到统计，同时允许 GitHub Actions 工作流继续成功结束
+- 从 `accounts.yaml` 读取要签到的站点配置
+- 从环境变量或 GitHub Secrets 读取每个站点的 token
+- 对每个已配置的 `new-api` 站点执行每日签到
+- 输出简洁的执行摘要，并保留真实成功 / 失败 / 跳过统计
+- 默认 HTTP 超时为 60 秒，避免单个站点卡住整个流程
 
 ## 当前支持
 
-v1 当前支持：
+v1 当前只支持：
+
 - `new-api`
+- token 鉴权
 
 v1 暂不包含：
+
+- cookie 鉴权
+- 其他站点类型
 - 浏览器扩展专用的调度 / 运行时 / 存储逻辑
 - Turnstile / 浏览器辅助签到流程
 - 重试队列或状态持久化
 
-这意味着：
-- 遇到 Cloudflare / Turnstile / 其他浏览器挑战时，CLI 只能标记为 `skipped`
-- 某些站点如果只是额外要求固定请求头，可通过 `extraHeaders` 兼容
-- 某些站点如果要求动态签名、前端计算或挑战页面执行，仍不适合在当前纯 HTTP CLI 里跑
+遇到 Cloudflare / Turnstile / 其他浏览器挑战时，CLI 会尽量识别并标记为 `skipped`。
 
 ## 环境要求
 
@@ -37,62 +40,49 @@ pnpm install
 
 ## 配置方式
 
-程序只使用一种配置方式：
+项目使用一个可提交的配置文件管理站点地址，用 Secret 管理 token。
 
-- `AUTO_CHECKIN_ACCOUNT_MANIFEST`：一个逗号分隔字符串，列出要执行的 slot 后缀
-- `AUTO_CHECKIN_SLOT_XX`：每个 slot 对应一个完整账号 JSON
-
-示例：
+复制示例文件：
 
 ```bash
-export AUTO_CHECKIN_ACCOUNT_MANIFEST='01,02'
-
-export AUTO_CHECKIN_SLOT_01='{"name":"main-account","siteType":"new-api","baseUrl":"https://example.com","authType":"token","userId":123,"accessToken":"your-token","enabled":true}'
-
-export AUTO_CHECKIN_SLOT_02='{"name":"backup-account","siteType":"new-api","baseUrl":"https://example2.com","authType":"cookie","cookie":"session=your-cookie","enabled":true}'
+cp accounts.example.yaml accounts.yaml
 ```
 
-程序会按 manifest 的顺序依次读取：
-- `AUTO_CHECKIN_SLOT_01`
-- `AUTO_CHECKIN_SLOT_02`
+编辑 `accounts.yaml`：
 
-如果 manifest 里引用了不存在、为空或重复的 slot，程序会直接报错。
+```yaml
+accounts:
+  - name: site-a
+    baseUrl: https://site-a.example
+    tokenEnv: NEW_API_TOKEN_SITE_A
 
-### 单个账号配置字段说明
-
-每个 `AUTO_CHECKIN_SLOT_XX` 的 JSON 支持这些字段：
-
-- `name`：日志中展示的账号名
-- `siteType`：必须为 `new-api`
-- `baseUrl`：站点根地址
-- `authType`：`token` 或 `cookie`
-- `userId`：可选；某些站点需要兼容用户 ID 请求头时可配置
-- `accessToken`：当 `authType=token` 时必填
-- `cookie`：当 `authType=cookie` 时必填
-- `extraHeaders`：可选；给个别非标准站点补充自定义请求头
-- `enabled`：可选，默认是 `true`
-
-示例 JSON：
-
-```json
-{
-  "name": "main-account",
-  "siteType": "new-api",
-  "baseUrl": "https://example.com",
-  "authType": "token",
-  "userId": 123,
-  "accessToken": "your-token",
-  "extraHeaders": {
-    "X-Custom-Signature": "your-signature"
-  },
-  "enabled": true
-}
+  - name: site-b
+    baseUrl: https://site-b.example
+    tokenEnv: NEW_API_TOKEN_SITE_B
 ```
 
-后续如果想继续加账号：
-1. 选一个新的 slot，例如 `03`
-2. 设置对应的 `AUTO_CHECKIN_SLOT_03`
-3. 把 `"03"` 加进 `AUTO_CHECKIN_ACCOUNT_MANIFEST`
+字段说明：
+
+- `name`：日志中显示的账号名，必须唯一
+- `baseUrl`：new-api 站点根地址
+- `tokenEnv`：token 对应的环境变量名 / GitHub Secret 名
+- `enabled`：可选，设为 `false` 时跳过该账号
+
+本地运行时，设置对应环境变量：
+
+```bash
+export NEW_API_TOKEN_SITE_A='your-token'
+export NEW_API_TOKEN_SITE_B='your-token'
+pnpm build
+pnpm checkin
+```
+
+新增、删除或修改账号时，只需要改：
+
+- `accounts.yaml` 里的站点条目
+- 对应的 GitHub Secret token 值
+
+不需要改代码，也不需要改 workflow。
 
 ## 本地使用
 
@@ -100,6 +90,12 @@ export AUTO_CHECKIN_SLOT_02='{"name":"backup-account","siteType":"new-api","base
 
 ```bash
 pnpm typecheck
+```
+
+测试：
+
+```bash
+pnpm test
 ```
 
 构建：
@@ -123,24 +119,38 @@ pnpm dev
 ## 输出行为
 
 CLI 会输出：
+
 - 本次处理的账号数量
 - `success` / `already_checked` / `failed` / `skipped` 汇总
 - 每个账号一行结果
+- 对失败或跳过账号输出安全诊断信息
 
 退出码规则：
+
 - 单个账号即使请求失败，也不会中断后续账号执行
 - 只要存在 `failed` 账号，进程最终返回 `1`
 - `skipped` 账号会保留在最终统计里，但不会单独导致进程失败
 
-在 GitHub Actions 里，默认工作流会吞掉这个非零退出码，避免因为单个站点失败持续触发仓库失败邮件；真实签到状态仍然通过 Telegram 摘要里的统计和标题展示。
+在 GitHub Actions 里，默认工作流会吞掉签到步骤的非零退出码，避免因为单个站点失败持续触发仓库失败邮件；真实签到状态仍然通过日志和 Telegram 摘要里的统计展示。
+
+## 安全诊断日志
+
+失败诊断默认只打印：
+
+- HTTP 状态码
+- 少量安全响应头，例如 `server`、`content-type`、`cf-ray`
+- 超时时间
+
+响应 body 不会打印到日志里，避免把站点返回的敏感内容带进 GitHub Actions 日志或 Telegram 摘要。程序仍会在内存里使用短文本片段识别 Cloudflare / Turnstile 等挑战类型。
 
 ## GitHub Actions
 
-本仓库内置了定时工作流：
+本仓库内置定时工作流：
 
 - `.github/workflows/daily-checkin.yml`
 
 当前支持：
+
 - 每日定时运行
 - 手动 `workflow_dispatch`
 - 工作流始终跑完整体流程，不因单个账号失败中断
@@ -176,103 +186,30 @@ on:
 ```
 
 例如：
+
 - `0 0 * * *`：每天 08:00（Asia/Shanghai）
 - `30 1 * * *`：每天 09:30（Asia/Shanghai）
 
-GitHub Actions 的 `schedule` 不能从 secret 动态读取，所以这里最简单可靠的方式就是直接改 workflow 文件。
+### 必需的 GitHub Secrets
 
-### 必需的 GitHub Secrets / Variables
+请在仓库的 **Secrets and variables -> Actions** 中配置每个 token。
 
-请在仓库的 **Secrets and variables → Actions** 中配置：
+如果 `accounts.yaml` 是：
 
-#### Repository Variable
+```yaml
+accounts:
+  - name: site-a
+    baseUrl: https://site-a.example
+    tokenEnv: NEW_API_TOKEN_SITE_A
+```
 
-- `AUTO_CHECKIN_ACCOUNT_MANIFEST`
-
-值为逗号分隔字符串，按执行顺序列出要使用的 slot 后缀：
+那么需要新增一个 Repository Secret：
 
 ```text
-01,02,03
+NEW_API_TOKEN_SITE_A=your-token
 ```
 
-规则：
-- 每一项都对应一个 `AUTO_CHECKIN_SLOT_XX`
-- manifest 顺序就是执行顺序
-- 不能重复引用同一个 slot
-
-#### Repository Secrets
-
-每个 slot 对应一个独立 secret，secret 值为完整账号 JSON。
-
-当前 workflow 预留了这些 slot：
-
-- `AUTO_CHECKIN_SLOT_01`
-- `AUTO_CHECKIN_SLOT_02`
-- `AUTO_CHECKIN_SLOT_03`
-- `AUTO_CHECKIN_SLOT_04`
-- `AUTO_CHECKIN_SLOT_05`
-- `AUTO_CHECKIN_SLOT_06`
-- `AUTO_CHECKIN_SLOT_07`
-- `AUTO_CHECKIN_SLOT_08`
-- `AUTO_CHECKIN_SLOT_09`
-- `AUTO_CHECKIN_SLOT_10`
-- `AUTO_CHECKIN_SLOT_11`
-- `AUTO_CHECKIN_SLOT_12`
-- `AUTO_CHECKIN_SLOT_13`
-- `AUTO_CHECKIN_SLOT_14`
-- `AUTO_CHECKIN_SLOT_15`
-- `AUTO_CHECKIN_SLOT_16`
-- `AUTO_CHECKIN_SLOT_17`
-- `AUTO_CHECKIN_SLOT_18`
-- `AUTO_CHECKIN_SLOT_19`
-- `AUTO_CHECKIN_SLOT_20`
-- `AUTO_CHECKIN_SLOT_21`
-- `AUTO_CHECKIN_SLOT_22`
-- `AUTO_CHECKIN_SLOT_23`
-- `AUTO_CHECKIN_SLOT_24`
-- `AUTO_CHECKIN_SLOT_25`
-- `AUTO_CHECKIN_SLOT_26`
-- `AUTO_CHECKIN_SLOT_27`
-- `AUTO_CHECKIN_SLOT_28`
-- `AUTO_CHECKIN_SLOT_29`
-- `AUTO_CHECKIN_SLOT_30`
-
-例如：
-
-`AUTO_CHECKIN_SLOT_01`:
-
-```json
-{
-  "name": "main-account",
-  "siteType": "new-api",
-  "baseUrl": "https://example.com",
-  "authType": "token",
-  "userId": 123,
-  "accessToken": "your-token",
-  "enabled": true
-}
-```
-
-`AUTO_CHECKIN_SLOT_02`:
-
-```json
-{
-  "name": "backup-account",
-  "siteType": "new-api",
-  "baseUrl": "https://example2.com",
-  "authType": "cookie",
-  "cookie": "session=your-cookie",
-  "enabled": true
-}
-```
-
-以后如果要新增账号：
-1. 选一个空闲 slot，例如 `04`
-2. 新增或编辑对应 secret，例如 `AUTO_CHECKIN_SLOT_04`
-3. 把 `"04"` 加进 `AUTO_CHECKIN_ACCOUNT_MANIFEST`
-4. 不需要修改 workflow 文件
-
-如果 30 个 slot 不够，再扩容 workflow 里的 slot 列表即可。
+工作流会把 GitHub Secrets 作为 JSON 传给签到程序，程序只读取 `accounts.yaml` 中声明的 `tokenEnv`。这些值不会输出到日志。
 
 ### 可选的 Telegram Secrets
 
@@ -292,6 +229,7 @@ GitHub Actions 的 `schedule` 不能从 secret 动态读取，所以这里最简
    - 在返回结果里找到数字形式的 `chat.id`
 
 当工作流执行结束后，只要配置了 Telegram secrets，就会发送一条最终通知。消息会包含：
+
 - 成功 / 失败状态
 - 仓库名
 - 分支名
@@ -301,4 +239,4 @@ GitHub Actions 的 `schedule` 不能从 secret 动态读取，所以这里最简
 
 ## 说明
 
-这个项目刻意保持极简。它复用了上游 `new-api` 签到思路，但不打算移植浏览器扩展那一整套架构。
+这个项目刻意保持极简。它复用了 `new-api` 的签到接口思路，但不移植浏览器扩展那一整套架构。

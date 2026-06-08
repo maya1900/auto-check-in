@@ -1,0 +1,19 @@
+accounts:
+- name: joverna
+  baseUrl: https://jiuuij.de5.net
+  tokenEnv: JOVERNA
+- name: elysiver
+  baseUrl: https://elysiver.h-e.top
+  tokenEnv: ELYSIVER
+- name: embedding & reranker
+  baseUrl: https://router.tumuer.me
+  tokenEnv: EMBEDDING
+- name: chy
+  baseUrl: https://chybenzun.top
+  tokenEnv: CHY
+- name: ly
+  baseUrl: https://free.lyclaude.site
+  tokenEnv: LY
+- name: muyuan
+  baseUrl: https://muyuan.do
+  tokenEnv: MUYUAN

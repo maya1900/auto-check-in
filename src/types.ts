@@ -1,13 +1,11 @@
 export const SITE_TYPES = {
   NEW_API: "new-api",
-  SUB2API: "sub2api",
 } as const
 
 export type SiteType = (typeof SITE_TYPES)[keyof typeof SITE_TYPES]
 
 export const AUTH_TYPES = {
   TOKEN: "token",
-  COOKIE: "cookie",
 } as const
 
 export type AuthType = (typeof AUTH_TYPES)[keyof typeof AUTH_TYPES]
@@ -27,17 +25,14 @@ export interface AccountConfig {
   siteType: SiteType
   baseUrl: string
   authType: AuthType
-  userId?: number
   accessToken?: string
-  cookie?: string
-  extraHeaders?: Record<string, string>
   enabled: boolean
 }
 
 export interface CheckinDiagnostics {
   statusCode?: number
   headers?: Record<string, string>
-  bodySnippet?: string
+  timeoutMs?: number
 }
 
 export interface CheckinResult {
@@ -46,6 +41,7 @@ export interface CheckinResult {
   status: CheckinResultStatus
   message: string
   reasonCode?: string
+  manualCheckinUrl?: string
   diagnostics?: CheckinDiagnostics
 }
 

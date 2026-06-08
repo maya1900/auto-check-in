@@ -19,6 +19,11 @@ const TURNSTILE_SNIPPETS = [
   "turnstile",
 ]
 
+function buildManualCheckinMessage(manualCheckinUrl?: string): string {
+  const base = "需要人工签到，请打开站点处理"
+  return manualCheckinUrl ? `${base}: ${manualCheckinUrl}` : base
+}
+
 export function normalizeMessage(message: unknown): string {
   return typeof message === "string" ? message.trim() : ""
 }
@@ -30,7 +35,10 @@ export function isAlreadyCheckedMessage(message: string): boolean {
   )
 }
 
-function classifySkippableMessage(message: string):
+export function classifySkippableMessage(
+  message: string,
+  manualCheckinUrl?: string,
+):
   | { reasonCode: string; message: string }
   | undefined {
   const normalized = message.toLowerCase()
@@ -38,21 +46,21 @@ function classifySkippableMessage(message: string):
   if (CLOUDFLARE_SNIPPETS.some((snippet) => normalized.includes(snippet))) {
     return {
       reasonCode: "cloudflare_protected",
-      message: "Cloudflare challenge required",
+      message: buildManualCheckinMessage(manualCheckinUrl),
     }
   }
 
   if (TURNSTILE_SNIPPETS.some((snippet) => normalized.includes(snippet))) {
     return {
       reasonCode: "turnstile_required",
-      message: "Turnstile token required",
+      message: buildManualCheckinMessage(manualCheckinUrl),
     }
   }
 
   if (normalized.includes("challenge")) {
     return {
       reasonCode: "challenge_required",
-      message: "Browser challenge required",
+      message: buildManualCheckinMessage(manualCheckinUrl),
     }
   }
 }
@@ -65,6 +73,7 @@ export function resolveErrorResult(params: {
   accountName: string
   siteType: CheckinResult["siteType"]
   error: unknown
+  manualCheckinUrl?: string
 }): CheckinResult {
   const message = (() => {
     if (typeof params.error === "string") return params.error
@@ -74,6 +83,8 @@ export function resolveErrorResult(params: {
 
   const diagnostics: CheckinDiagnostics | undefined =
     params.error instanceof HttpRequestError ? params.error.diagnostics : undefined
+  const classificationText =
+    params.error instanceof HttpRequestError ? params.error.classificationText : undefined
 
   if (message && isAlreadyCheckedMessage(message)) {
     return buildResult({
@@ -86,10 +97,12 @@ export function resolveErrorResult(params: {
     })
   }
 
-  const haystack = [message, diagnostics?.bodySnippet, diagnostics?.headers?.server]
+  const haystack = [message, classificationText, diagnostics?.headers?.server]
     .filter(Boolean)
     .join(" ")
-  const skippable = haystack ? classifySkippableMessage(haystack) : undefined
+  const skippable = haystack
+    ? classifySkippableMessage(haystack, params.manualCheckinUrl)
+    : undefined
   if (skippable) {
     return buildResult({
       accountName: params.accountName,
@@ -97,6 +110,7 @@ export function resolveErrorResult(params: {
       status: CHECKIN_RESULT_STATUS.SKIPPED,
       message: skippable.message,
       reasonCode: skippable.reasonCode,
+      manualCheckinUrl: params.manualCheckinUrl,
       diagnostics,
     })
   }

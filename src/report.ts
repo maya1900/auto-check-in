@@ -14,7 +14,7 @@ function formatDiagnostics(diag: CheckinDiagnostics): string {
     parts.push(`${key}=${JSON.stringify(value)}`)
   }
 
-  if (diag.bodySnippet) parts.push(`body=${JSON.stringify(diag.bodySnippet)}`)
+  if (typeof diag.timeoutMs === "number") parts.push(`timeoutMs=${diag.timeoutMs}`)
   return parts.join(" ")
 }
 

@@ -10,14 +10,22 @@ export interface ApiResponse<TData = unknown> {
 export class HttpRequestError extends Error {
   statusCode?: number
   diagnostics: CheckinDiagnostics
+  classificationText?: string
 
-  constructor(message: string, diagnostics: CheckinDiagnostics) {
+  constructor(
+    message: string,
+    diagnostics: CheckinDiagnostics,
+    classificationText?: string,
+  ) {
     super(message)
     this.name = "HttpRequestError"
     this.statusCode = diagnostics.statusCode
     this.diagnostics = diagnostics
+    this.classificationText = classificationText
   }
 }
+
+export const DEFAULT_REQUEST_TIMEOUT_MS = 60_000
 
 const DIAGNOSTIC_HEADERS = [
   "server",
@@ -47,35 +55,38 @@ export async function postJson<TData = unknown>(
   account: AccountConfig,
   endpoint: string,
   body: unknown = {},
-  extraHeaders: Record<string, string> = {},
+  timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
 ): Promise<ApiResponse<TData>> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Pragma: "no-cache",
-    ...(account.extraHeaders ?? {}),
-    ...extraHeaders,
-  }
-
-  if (typeof account.userId === "number") {
-    const userId = String(account.userId)
-    headers["X-User-Id"] = userId
-    headers["X-User-ID"] = userId
-    headers["New-Api-User"] = userId
   }
 
   if (account.authType === AUTH_TYPES.TOKEN && account.accessToken) {
     headers.Authorization = `Bearer ${account.accessToken}`
   }
 
-  if (account.authType === AUTH_TYPES.COOKIE && account.cookie) {
-    headers.Cookie = account.cookie
-  }
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  let response: Response
 
-  const response = await fetch(`${account.baseUrl}${endpoint}`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  })
+  try {
+    response = await fetch(`${account.baseUrl}${endpoint}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new HttpRequestError(`Request timed out after ${timeoutMs}ms`, {
+        timeoutMs,
+      })
+    }
+    throw error
+  } finally {
+    clearTimeout(timeout)
+  }
 
   const text = await response.text()
   let payload: ApiResponse<TData> | undefined
@@ -91,8 +102,7 @@ export async function postJson<TData = unknown>(
     throw new HttpRequestError(message, {
       statusCode: response.status,
       headers: pickDiagnosticHeaders(response.headers),
-      bodySnippet: text ? snippet(text) : undefined,
-    })
+    }, text ? snippet(text) : undefined)
   }
 
   return payload ?? {}

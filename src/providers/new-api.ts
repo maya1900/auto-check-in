@@ -8,6 +8,7 @@ import {
 } from "../types.js"
 import {
   buildResult,
+  classifySkippableMessage,
   isAlreadyCheckedMessage,
   normalizeMessage,
   resolveErrorResult,
@@ -23,10 +24,6 @@ export const newApiProvider: CheckinProvider = {
 
     if (account.authType === "token" && !account.accessToken) {
       return { ok: false, reason: "missing_access_token" }
-    }
-
-    if (account.authType === "cookie" && !account.cookie) {
-      return { ok: false, reason: "missing_cookie" }
     }
 
     return { ok: true }
@@ -56,6 +53,20 @@ export const newApiProvider: CheckinProvider = {
         })
       }
 
+      const skippable = message
+        ? classifySkippableMessage(message, account.baseUrl)
+        : undefined
+      if (skippable) {
+        return buildResult({
+          accountName: account.name,
+          siteType: account.siteType,
+          status: CHECKIN_RESULT_STATUS.SKIPPED,
+          message: skippable.message,
+          reasonCode: skippable.reasonCode,
+          manualCheckinUrl: account.baseUrl,
+        })
+      }
+
       return buildResult({
         accountName: account.name,
         siteType: account.siteType,
@@ -68,6 +79,7 @@ export const newApiProvider: CheckinProvider = {
         accountName: account.name,
         siteType: account.siteType,
         error,
+        manualCheckinUrl: account.baseUrl,
       })
     }
   },
