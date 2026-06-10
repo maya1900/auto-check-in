@@ -15,7 +15,7 @@ accounts:
   userId: 4045
   tokenEnv: CHY
 - name: ly
-  baseUrl: https://free.lyclaude.site
+  baseUrl: https://hotaruapi.com
   userId: 5129
   tokenEnv: LY
 - name: muyuan
