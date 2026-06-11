@@ -26,3 +26,7 @@ accounts:
   baseUrl: https://api.sccens.net
   userId: 1095
   tokenEnv: BAIGE
+- name: lanIn
+  baseUrl: https://ai.venlacy.com
+  userId: 3882
+  tokenEnv: LANIN
