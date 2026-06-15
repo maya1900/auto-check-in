@@ -30,3 +30,7 @@ accounts:
   baseUrl: https://ai.venlacy.com
   userId: 3882
   tokenEnv: LANIN
+- name: Thatapi
+  baseUrl: https://gyapi.zxiaoruan.cn
+  userId: 1849
+  tokenEnv: THATAPI
