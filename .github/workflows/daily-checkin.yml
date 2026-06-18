@@ -2,7 +2,8 @@ name: daily-checkin
 
 on:
   schedule:
-    - cron: "17 1 * * *"
+    - cron: "55 8 * * *"
+      timezone: "Asia/Shanghai"
   workflow_dispatch:
 
 jobs:
@@ -35,6 +36,26 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Wait until random check-in time
+        if: github.event_name == 'schedule'
+        run: |
+          wait_seconds="$(python3 - <<'PY'
+          from datetime import datetime, timedelta
+          from random import randint
+          from zoneinfo import ZoneInfo
+
+          tz = ZoneInfo("Asia/Shanghai")
+          now = datetime.now(tz)
+          target = now.replace(hour=9, minute=0, second=0, microsecond=0) + timedelta(seconds=randint(0, 600))
+          wait_seconds = max(0, int((target - now).total_seconds()))
+
+          print(wait_seconds)
+          print(f"Random check-in target: {target.isoformat()}", file=__import__("sys").stderr)
+          PY
+          )"
+          echo "Waiting ${wait_seconds}s before check-in."
+          sleep "${wait_seconds}"
 
       - name: Run auto check-in
         env:

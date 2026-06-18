@@ -158,19 +158,19 @@ CLI 会输出：
 - 工作流始终跑完整体流程，不因单个账号失败中断
 - Telegram 根据签到摘要中的 `failed=` 统计展示成功或失败
 
-### 默认定时
+### 默认定时与随机等待
 
-默认 cron 为：
+默认工作流会在北京时间每天 08:55 启动：
 
 ```yaml
-17 1 * * *
+schedule:
+  - cron: "55 8 * * *"
+    timezone: "Asia/Shanghai"
 ```
 
-工作流里同时设置了：
+定时触发时，工作流会在执行签到前随机选择当天 `09:00:00` 到 `09:10:00` 之间的一个目标时间，并等待到该时间再开始签到。例如今天可能是 09:03:42，明天可能是 09:08:11。
 
-- `TZ: Asia/Shanghai`
-
-也就是说，默认会按上海时区每日执行一次。
+手动 `workflow_dispatch` 触发时不会等待随机时间，会立即执行，便于测试。
 
 ### 自定义定时
 
@@ -183,14 +183,15 @@ CLI 会输出：
 ```yaml
 on:
   schedule:
-    - cron: "17 1 * * *"
+    - cron: "55 8 * * *"
+      timezone: "Asia/Shanghai"
   workflow_dispatch:
 ```
 
 例如：
 
-- `0 0 * * *`：每天 08:00（Asia/Shanghai）
-- `30 1 * * *`：每天 09:30（Asia/Shanghai）
+- `0 8 * * *` + `timezone: "Asia/Shanghai"`：每天 08:00
+- `30 9 * * *` + `timezone: "Asia/Shanghai"`：每天 09:30
 
 ### 必需的 GitHub Secrets
 
