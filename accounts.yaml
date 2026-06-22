@@ -34,3 +34,19 @@ accounts:
   baseUrl: https://gyapi.zxiaoruan.cn
   userId: 1849
   tokenEnv: THATAPI
+- name: yuecheng
+  baseUrl: https://ai.52ccl.cn
+  userId: 347
+  tokenEnv: YUECHENG
+- name: jiuyao
+  baseUrl: https://api.7r.fit
+  userId: 4440
+  tokenEnv: JIUYAO
+- name: grajsh
+  baseUrl: https://grajsh3017-newapi.hf.space
+  userId: 1466
+  tokenEnv: GRAJSH
+- name: maoyu
+  baseUrl: https://maoyulin.xyz
+  userId: 4053
+  tokenEnv: MAOYU
