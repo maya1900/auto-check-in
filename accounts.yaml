@@ -15,7 +15,7 @@ accounts:
   userId: 4045
   tokenEnv: CHY
 - name: ly
-  baseUrl: https://hotaruapi.com
+  baseUrl: https://free.lyclaude.site
   userId: 5129
   tokenEnv: LY
 - name: muyuan
@@ -42,10 +42,6 @@ accounts:
   baseUrl: https://api.7r.fit
   userId: 4440
   tokenEnv: JIUYAO
-- name: grajsh
-  baseUrl: https://grajsh3017-newapi.hf.space
-  userId: 1466
-  tokenEnv: GRAJSH
 - name: maoyu
   baseUrl: https://maoyulin.xyz
   userId: 4053
