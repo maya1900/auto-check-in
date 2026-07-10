@@ -18,14 +18,6 @@ accounts:
   baseUrl: https://free.lyclaude.site
   userId: 5129
   tokenEnv: LY
-- name: muyuan
-  baseUrl: https://muyuan.do
-  userId: 11181
-  tokenEnv: MUYUAN
-- name: baige
-  baseUrl: https://api.sccens.net
-  userId: 1095
-  tokenEnv: BAIGE
 - name: lanIn
   baseUrl: https://ai.venlacy.com
   userId: 3882
