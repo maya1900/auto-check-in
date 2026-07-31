@@ -34,7 +34,3 @@ accounts:
   baseUrl: https://api.7r.fit
   userId: 4440
   tokenEnv: JIUYAO
-- name: maoyu
-  baseUrl: https://maoyulin.xyz
-  userId: 4053
-  tokenEnv: MAOYU
