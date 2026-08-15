@@ -1,10 +1,7 @@
 name: daily-checkin
 
-on:
-  schedule:
-    - cron: "55 8 * * *"
-      timezone: "Asia/Shanghai"
-  workflow_dispatch:
+# Disabled: no events trigger this workflow.
+on: []
 
 jobs:
   checkin:
